@@ -60,3 +60,28 @@ if(MSVC)
 else()
   target_compile_options(SfSpp PRIVATE -Wno-deprecated-declarations)
 endif()
+
+# --- extract_axis -----------------------------------------------------------
+# Replaces the MATLAB-only axis stage of the preprocessing pipeline; see
+# tools/extract_axis.cpp. Reuses this repository's PotSAC implementation, so it
+# only needs the data structures and the axis code, not the reassembly.
+add_executable(extract_axis
+  ${CMAKE_CURRENT_SOURCE_DIR}/tools/extract_axis.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/class/axis_estimation.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/class/data_structure.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/class/KDTree.cpp)
+
+target_include_directories(extract_axis
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/class
+    ${PCL_INCLUDE_DIRS})
+
+target_link_libraries(extract_axis PRIVATE Ceres::ceres ${PCL_LIBRARIES})
+target_compile_definitions(extract_axis PRIVATE ${PCL_DEFINITIONS})
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(extract_axis PRIVATE OpenMP::OpenMP_CXX)
+endif()
+if(NOT MSVC)
+  target_compile_options(extract_axis PRIVATE -Wno-deprecated-declarations)
+endif()
