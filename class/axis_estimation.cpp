@@ -8,6 +8,20 @@
 #include <random>
 #include <unordered_set>
 
+// ---------------------------------------------------------------------------
+// Ceres compatibility shim.
+// Ceres 2.1 deprecated LocalParameterization in favour of Manifold and 2.2
+// removed it outright. HomogeneousVectorParameterization(3) is the old name of
+// SphereManifold<3> (ambient size 3, tangent size 2).
+// ---------------------------------------------------------------------------
+#if CERES_VERSION_MAJOR > 2 || (CERES_VERSION_MAJOR == 2 && CERES_VERSION_MINOR >= 1)
+#define SFS_SET_UNIT_SPHERE(problem, ptr) \
+	(problem).SetManifold((ptr), new ceres::SphereManifold<3>())
+#else
+#define SFS_SET_UNIT_SPHERE(problem, ptr) \
+	(problem).SetParameterization((ptr), new ceres::HomogeneousVectorParameterization(3))
+#endif
+
 // convert euclidean to Plucker coordinates
 // If n is the normal vector and c is the point vector, then its Plucker notation is
 // [n; cross(c,n)] in MATLAB.
@@ -208,7 +222,6 @@ void RefineAxis(Geom* const geom_ptr,
 	// instantiate Ceres problem
 	ceres::Problem problem;
 	ceres::LossFunction* loss_ptr = new ceres::CauchyLoss(inlier_threshold);
-	ceres::LocalParameterization* unit_sphere = new ceres::HomogeneousVectorParameterization(3);
 
 	// Add residuals
 	size_t num_points = geom_ptr->sur_in_.point_.cols();
@@ -235,7 +248,7 @@ void RefineAxis(Geom* const geom_ptr,
 	}
 
 	// Set unit vector manifold parameterization
-	problem.SetParameterization(axis_normal.data(), unit_sphere);
+	SFS_SET_UNIT_SPHERE(problem, axis_normal.data());
 
 	// std::cout << axis_normal << std::endl << axis_point << std::endl;
 
@@ -269,7 +282,6 @@ void RefineAxis(vector<Geom*> const geom_ptr,
 	// instantiate Ceres problem
 	ceres::Problem problem;
 	ceres::LossFunction* loss_ptr = new ceres::CauchyLoss(inlier_threshold);
-	ceres::LocalParameterization* unit_sphere = new ceres::HomogeneousVectorParameterization(3);
 
 	// Add residuals
 	size_t num_shard = geom_ptr.size();
@@ -300,7 +312,7 @@ void RefineAxis(vector<Geom*> const geom_ptr,
 	}
 
 	// Set unit vector manifold parameterization
-	problem.SetParameterization(axis_normal.data(), unit_sphere);
+	SFS_SET_UNIT_SPHERE(problem, axis_normal.data());
 
 	// std::cout << axis_normal << std::endl << axis_point << std::endl;
 

@@ -1,41 +1,62 @@
-cmake_minimum_required(VERSION 3.11)
-project(Hierarchy-Clear)
-
-# Ceres
-find_package(Ceres CONFIG REQUIRED)
-if(NOT Ceres_FOUND)
-    message(FATAL_ERROR "Ceres not found")
-endif()
-
-# PCL  
-find_package(PCL CONFIG REQUIRED)  
-find_package(PCL CONFIG REQUIRED COMPONENTS common io)  
-
-#OpenMP
-find_package(OpenMP)
+cmake_minimum_required(VERSION 3.16)
+project(SfSpp VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-file(GLOB PROJ_SRC "*.cpp", "*.h", "class/*.cpp", "class/*.h")
-add_executable(Hierarchy-Clear ${PROJ_SRC})
-
-if (MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
-  add_definitions(-D _CRT_SECURE_NO_WARNINGS)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
+
+# --- Homebrew hints (macOS) -------------------------------------------------
+if(APPLE)
+  execute_process(COMMAND brew --prefix OUTPUT_VARIABLE HOMEBREW_PREFIX
+                  OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+  if(HOMEBREW_PREFIX)
+    list(APPEND CMAKE_PREFIX_PATH "${HOMEBREW_PREFIX}")
+    # AppleClang needs an explicit pointer at keg-only libomp
+    if(EXISTS "${HOMEBREW_PREFIX}/opt/libomp")
+      set(OpenMP_ROOT "${HOMEBREW_PREFIX}/opt/libomp" CACHE PATH "")
+      set(OpenMP_CXX_FLAGS "-Xclang -fopenmp -I${HOMEBREW_PREFIX}/opt/libomp/include")
+      set(OpenMP_CXX_LIB_NAMES "omp")
+      set(OpenMP_omp_LIBRARY "${HOMEBREW_PREFIX}/opt/libomp/lib/libomp.dylib")
+    endif()
+  endif()
+endif()
+
+find_package(Ceres CONFIG REQUIRED)
+find_package(PCL CONFIG REQUIRED COMPONENTS common io features visualization)
+find_package(OpenMP)
+
+file(GLOB PROJ_SRC
+  "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/class/*.cpp")
+
+add_executable(SfSpp ${PROJ_SRC})
+
+target_include_directories(SfSpp
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/class
+    ${PCL_INCLUDE_DIRS})
+
+target_link_libraries(SfSpp
+  PRIVATE
+    Ceres::ceres
+    ${PCL_LIBRARIES})
+
+target_compile_definitions(SfSpp PRIVATE ${PCL_DEFINITIONS})
 
 if(OpenMP_CXX_FOUND)
-    target_link_libraries(Hierarchy-Clear 
-        PUBLIC 
-            OpenMP::OpenMP_CXX
-    )
+  target_link_libraries(SfSpp PRIVATE OpenMP::OpenMP_CXX)
+else()
+  message(WARNING "OpenMP not found - building single threaded")
 endif()
-target_link_libraries(Hierarchy-Clear
-    PRIVATE
-        ${CERES_LIBRARIES}
-        ${PCL_LIBRARIES}
-)
-target_include_directories(Hierarchy-Clear
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/class
-)
+
+if(MSVC)
+  target_compile_options(SfSpp PRIVATE /bigobj)
+  target_compile_definitions(SfSpp PRIVATE _CRT_SECURE_NO_WARNINGS)
+else()
+  target_compile_options(SfSpp PRIVATE -Wno-deprecated-declarations)
+endif()

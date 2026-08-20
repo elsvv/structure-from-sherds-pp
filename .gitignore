@@ -1,5 +1,10 @@
+build/
 build/.vs/
 build/Debug/
 build/Release/
-build/
 .vscode/
+.DS_Store
+
+# наши тестовые сканы и скачанный датасет авторов
+data/
+Dataset/

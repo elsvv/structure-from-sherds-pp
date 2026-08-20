@@ -235,7 +235,7 @@ public:
 	{	
 		Initialize(N, s, shard, LCS_out);
 	}
-	StateManager(int step_size, string& log_path) : N_(0), s_(0), num_init_prio_(0) {
+	StateManager(int step_size, const string& log_path) : N_(0), s_(0), num_init_prio_(0) {
 		step_size_ = step_size;
 		log_path_ = log_path;
 	};

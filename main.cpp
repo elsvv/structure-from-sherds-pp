@@ -16,8 +16,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/console/parse.h>
 #include <pcl/common/transforms.h>
-#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
-#include <experimental/filesystem>
+#include <filesystem>
 #include "ceres/ceres.h"
 #include "class/data_path.h"
 #include "class/data_structure.h"
@@ -246,6 +245,18 @@ int main(int argc, char** argv)
 		if (!shard_on_off[i])
 			right_sherd[i] = false;
 	}
+	// Keyboard shortcuts go through VTK's key symbols, which are keyboard-layout
+	// dependent: on a non-Latin layout no letter key ever matches, so the result
+	// can never be saved interactively. SFS_AUTOSAVE shows the top-ranked result
+	// and writes it out without any keypress; SFS_AUTOSAVE=exit also quits after.
+	const char* autosave_env = std::getenv("SFS_AUTOSAVE");
+	const bool autosave = (autosave_env != nullptr);
+	const bool autosave_exit = autosave && std::string(autosave_env) == "exit";
+	if (autosave) {
+		cout << "#################### SFS_AUTOSAVE: saving top-ranked result" << endl;
+		vis.first_ = true;
+	}
+
 	while (!viewer->wasStopped()) {
 		viewer->spinOnce(5);
 		if (vis.first_) {
@@ -274,6 +285,8 @@ int main(int argc, char** argv)
 				is_first_state = true;
 			}
 			vis.first_ = false;
+			if (autosave)
+				vis.save_ = true;
 		}
 
 		else if (vis.right_) {
@@ -346,6 +359,8 @@ int main(int argc, char** argv)
 			SaveResult(pc_origin, manager, count_move_state, path_result);
 			vis.save_ = false;
 			cout << "#################### Result save finish : " << path_result << endl;
+			if (autosave_exit)
+				break;
 		}
 		else if (vis.ground_) {
 			string path_result = path + "Result/";
