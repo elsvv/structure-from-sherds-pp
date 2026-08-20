@@ -61,3 +61,35 @@ selected by the `#define POT_*` block at the top of `class/data_path.h` and
 rooted at `path` in the same file.
 
 Our own scans live in `data/test_fragments/` and are gitignored.
+
+## 5. Running our own scans end to end
+
+The preprocessing repository (ported alongside, see its own `BUILD-macOS.md`)
+produces surfaces, breaklines and axes; `tools/extract_axis` replaces its
+MATLAB-only axis stage. `SFS_DATA_ROOT` points this binary at the result, and
+`#define POT_TEST` in `class/data_path.h` selects our four fragments.
+
+```sh
+# 1. surfaces  (parameters rescaled for ~550 mm sherds)
+cd ../SfSpp_preprocessing/build
+SFSPP_SAMPLING_RADIUS=2.5 SFSPP_NORMAL_NEIGHBORS=16 SFSPP_SMOOTHNESS_DEG=7 ./MeshPreprocessing
+
+# 2. axes  (must precede EdgeLineExtraction: rim classification needs them)
+cd ../../structure-from-sherds-pp/build
+for i in 01 02 03 04; do
+  ./extract_axis ../../SfSpp_preprocessing/Temp/Data/Pot_A/Pot_A_Piece_${i}_Surface_0.xyz \
+                 ../../SfSpp_preprocessing/Temp/Data/Pot_A/Pot_A_Piece_${i}_Surface_1.xyz \
+                 ../../SfSpp_preprocessing/Dataset/Axes/Pot_A_Piece_${i}_Axis.xyz
+done
+
+# 3. breaklines
+cd ../../SfSpp_preprocessing/build && ./EdgeLineExtraction
+
+# 4. reassembly
+cd ../../structure-from-sherds-pp/build
+SFS_DATA_ROOT=../../SfSpp_preprocessing/Dataset/ SFS_AUTOSAVE=exit ./SfSpp
+```
+
+Note the ordering: upstream's README runs axis extraction last, but
+`EdgeLineExtraction` reads the axis while classifying rim segments, so it has to
+come second.

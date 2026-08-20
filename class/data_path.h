@@ -1,12 +1,13 @@
 #pragma once
 #include <string>
+#include <cstdlib>
 //#ifndef _DATA_PATH_H_
 //#define _DATA_PATH_H_
 
 #ifndef _DATA_PATH_H_
 #define _DATA_PATH_H_
 
-#define POT_A
+//#define POT_A
 //#define POT_B
 //#define POT_C
 //#define POT_D
@@ -26,16 +27,101 @@
 //#define BB_Bwl_1 			// Bowl B1, B2, B3
 //#define BB_Plt_1			// Plate P1, P2, P3
 //#define BB_Vse_1			// Vase V1, V2, V3
+#define POT_TEST			// our own scans, see BUILD-macOS.md
 
 using namespace std;
 
 string data_type = "SfS_pp/"; // Or BreakingBad/Objects
 //string pot_type = "Other/";
 
-string path = "/Dataset/" + data_type;
+// The dataset root was hardwired to the container mount point. SFS_DATA_ROOT
+// overrides it so the same binary can be pointed at another collection without
+// a rebuild; the default is unchanged.
+inline string sfsDataRoot() {
+	const char* env = std::getenv("SFS_DATA_ROOT");
+	if (env && *env) {
+		string root(env);
+		if (root.back() != '/') root += '/';
+		return root;
+	}
+	return "/Dataset/" + data_type;
+}
+
+string path = sfsDataRoot();
 //string path = "C:/Pottery/Pottery Data/" + pot_type;
 
 
+
+
+//############################################ Our test fragments ############################################//
+#ifdef POT_TEST
+#define SHARD_NUMBER 4
+#define NUM_MIXED_SHERD 1
+
+string file_path[SHARD_NUMBER] = {
+	path + "Breaklines/Pot_A/Pot_A_Piece_01_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_02_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_03_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_04_Breakline_0.pcd"
+};
+
+string obj_path[SHARD_NUMBER] = {
+	path + "Mesh/Pot_A/Pot_A_Piece_01_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_02_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_03_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_04_Mesh.obj"
+};
+
+string axis_path[SHARD_NUMBER] = {
+	path + "Axes/Pot_A_Piece_01_Axis.xyz",
+	path + "Axes/Pot_A_Piece_02_Axis.xyz",
+	path + "Axes/Pot_A_Piece_03_Axis.xyz",
+	path + "Axes/Pot_A_Piece_04_Axis.xyz"
+};
+
+string surface_in[SHARD_NUMBER] = {
+	path + "Surfaces/Pot_A/Pot_A_Piece_01_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_02_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_03_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_04_Surface_0.xyz"
+};
+
+string surface_out[SHARD_NUMBER] = {
+	path + "Surfaces/Pot_A/Pot_A_Piece_01_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_02_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_03_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_04_Surface_1.xyz"
+};
+
+// Not produced by the preprocessing pipeline for this data; ReadPCD tolerates
+// the absence and leaves the fractured-surface term out of the optimisation.
+string surface_fr[SHARD_NUMBER] = {
+	path + "Surfaces/Pot_A/Pot_A_Piece_01_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_02_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_03_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_04_Surface_0_FracturedSurfacePts.pcd"
+};
+
+// No manual restoration exists for these fragments; the loader treats missing
+// ground truth as an empty graph, which only disables the accuracy report.
+string gt_T_path[SHARD_NUMBER] = {
+	path + "GroundTruth/Transformation/Pot_A_Piece_1_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_2_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_3_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_4_T.txt"
+};
+
+string gt_graph_path[1] = {
+	path + "GroundTruth/Pot_A_simple_graph.txt"
+};
+
+bool shard_on_off[SHARD_NUMBER] = {
+	true,
+	true,
+	true,
+	true
+};
+#endif
 
 //############################################ Breakingbad Plate_1 ############################################//
 #ifdef BB_Plt_1
