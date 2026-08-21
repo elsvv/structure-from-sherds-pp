@@ -1305,10 +1305,7 @@ def test_wall_thickness_of_two_parallel_planes():
         assert abs(wall_thickness(a, b) - 4.0) < 0.05
 
 def test_reference_thickness_gives_unit_scale():
-    class Fake:
-        pass
-    scales = infer_scales.__wrapped__ if hasattr(infer_scales, "__wrapped__") else None
-    # direct arithmetic check: a collection matching the reference must score 1.0
+    # a collection matching the reference must score exactly 1.0
     out = infer_scales([], [], _thickness_override=REFERENCE_THICKNESS_MM,
                        _extent_override=119.0)
     assert abs(out["thickness_scale"] - 1.0) < 1e-9
@@ -1423,9 +1420,19 @@ print(f"  inferred scales    : thickness x{scales['thickness_scale']:.2f}, "
       f"extent x{scales['extent_scale']:.2f}")
 ```
 
-`extents` is the largest bounding-box side per fragment, collected in
-`stage_dataset`; extend it to also return them, or recompute from the staged
-meshes with `read_mesh`.
+`extents` is the largest bounding-box side per fragment. `stage_dataset`
+returns only names, so compute them here from the staged meshes:
+
+```python
+from sfsbench.stage import read_mesh
+
+extents = []
+for n in names:
+    V, _ = read_mesh(os.path.join(dataset_root, "Mesh", f"Pot_{args.pot_id}", f"{n}_Mesh.obj"))
+    extents.append(float(np.max(V.max(0) - V.min(0))))
+```
+
+This needs `import numpy as np` at the top of `cli.py`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
