@@ -27,7 +27,11 @@
 //#define BB_Bwl_1 			// Bowl B1, B2, B3
 //#define BB_Plt_1			// Plate P1, P2, P3
 //#define BB_Vse_1			// Vase V1, V2, V3
+// POT_TEST is the default; the control binary passes -DPOT_CTRL instead, and
+// the two presets must never both be active (they define the same symbols).
+#ifndef POT_CTRL
 #define POT_TEST			// our own scans, see BUILD-macOS.md
+#endif
 
 using namespace std;
 
@@ -52,6 +56,99 @@ string path = sfsDataRoot();
 
 
 
+
+
+//############################################ Control: authors' Pot A through our own chain ############################################//
+#ifdef POT_CTRL
+#define SHARD_NUMBER 8
+#define NUM_MIXED_SHERD 1
+
+string file_path[SHARD_NUMBER] = {
+	path + "Breaklines/Pot_A/Pot_A_Piece_01_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_02_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_03_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_04_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_05_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_06_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_07_Breakline_0.pcd",
+	path + "Breaklines/Pot_A/Pot_A_Piece_08_Breakline_0.pcd"
+};
+
+string obj_path[SHARD_NUMBER] = {
+	path + "Mesh/Pot_A/Pot_A_Piece_01_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_02_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_03_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_04_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_05_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_06_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_07_Mesh.obj",
+	path + "Mesh/Pot_A/Pot_A_Piece_08_Mesh.obj"
+};
+
+string axis_path[SHARD_NUMBER] = {
+	path + "Axes/Pot_A_Piece_01_Axis.xyz",
+	path + "Axes/Pot_A_Piece_02_Axis.xyz",
+	path + "Axes/Pot_A_Piece_03_Axis.xyz",
+	path + "Axes/Pot_A_Piece_04_Axis.xyz",
+	path + "Axes/Pot_A_Piece_05_Axis.xyz",
+	path + "Axes/Pot_A_Piece_06_Axis.xyz",
+	path + "Axes/Pot_A_Piece_07_Axis.xyz",
+	path + "Axes/Pot_A_Piece_08_Axis.xyz"
+};
+
+string surface_in[SHARD_NUMBER] = {
+	path + "Surfaces/Pot_A/Pot_A_Piece_01_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_02_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_03_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_04_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_05_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_06_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_07_Surface_0.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_08_Surface_0.xyz"
+};
+
+string surface_out[SHARD_NUMBER] = {
+	path + "Surfaces/Pot_A/Pot_A_Piece_01_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_02_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_03_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_04_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_05_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_06_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_07_Surface_1.xyz",
+	path + "Surfaces/Pot_A/Pot_A_Piece_08_Surface_1.xyz"
+};
+
+string surface_fr[SHARD_NUMBER] = {
+	path + "Surfaces/Pot_A/Pot_A_Piece_01_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_02_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_03_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_04_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_05_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_06_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_07_Surface_0_FracturedSurfacePts.pcd",
+	path + "Surfaces/Pot_A/Pot_A_Piece_08_Surface_0_FracturedSurfacePts.pcd"
+};
+
+// Real ground truth: this run is scored against the authors' own transformations.
+string gt_T_path[SHARD_NUMBER] = {
+	path + "GroundTruth/Transformation/Pot_A_Piece_1_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_2_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_3_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_4_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_5_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_6_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_7_T.txt",
+	path + "GroundTruth/Transformation/Pot_A_Piece_8_T.txt"
+};
+
+string gt_graph_path[1] = {
+	path + "GroundTruth/Pot_A_simple_graph.txt"
+};
+
+bool shard_on_off[SHARD_NUMBER] = {
+	true, true, true, true, true, true, true, true
+};
+#endif
 
 //############################################ Our test fragments ############################################//
 #ifdef POT_TEST

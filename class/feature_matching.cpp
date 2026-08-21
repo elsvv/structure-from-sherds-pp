@@ -525,10 +525,10 @@ void MakeCorWOTree(vector<CorIndex>& cor, BreakLine& L0, BreakLine& L1, vector<i
 		double dir = abs(p_ab.dot(L1.normal_.col(i)));
 		dir = dir / (p_ab.norm() * L1.normal_.col(i).norm());
 		double norm_dir = L1.normal_.col(i).dot(L0.normal_.col(p_index));
-		if (len < 5) {
+		if (len < sfsLen(5)) {
 			region.push_back(i);
 		}
-		else if ((norm_dir > 0) && (len < 20)) {
+		else if ((norm_dir > 0) && (len < sfsLen(20))) {
 			if (dir >= 0.86) {				// cos30 = 0.86
 				region.push_back(i);
 			}
@@ -620,7 +620,7 @@ bool OverlapCheck_3d(BreakLine& L0,
 
 	double angle = center_L0.dot(center_L1) / (center_L0.norm() * center_L1.norm());
 
-	if ((center_L0 - center_L1).norm() < 5) {
+	if ((center_L0 - center_L1).norm() < sfsLen(5)) {
 		cout << "Overlap : Each center is too close" << endl;
 		area = 1000;
 		size = 1;
@@ -696,7 +696,7 @@ bool OverlapCheck_3d(BreakLine& L0,
 
 	double angle = center_L0.dot(center_L1) / (center_L0.norm() * center_L1.norm());
 
-	if ((center_L0 - center_L1).norm() < 5) {
+	if ((center_L0 - center_L1).norm() < sfsLen(5)) {
 		area = 1000;
 		size = 1;
 		return true;
@@ -774,7 +774,7 @@ bool OverlapCheck_3d(BreakLine& L0,
 
 	double angle = center_L0.dot(center_L1) / (center_L0.norm() * center_L1.norm());
 
-	if ((center_L0 - center_L1).norm() < 5) {
+	if ((center_L0 - center_L1).norm() < sfsLen(5)) {
 		cout << "Overlap : Each center is too close" << endl;
 		area = 1000;
 		size = 1;
@@ -1671,7 +1671,7 @@ void PairwisePruning(vector<Geom>& shard, list<LCSIndex>& LCS_out)
 
 		//#################### Overlapping check ####################//
 		double A_dummy(0), length(0);
-		bool overlap = OverlapCheck_3d(L[iter->shard_y_ - 1], L[iter->shard_x_ - 1], A_dummy, length, 50.0); // 50
+		bool overlap = OverlapCheck_3d(L[iter->shard_y_ - 1], L[iter->shard_x_ - 1], A_dummy, length, sfsArea(50.0));
 		//#################### Update LCS_out information ####################// 
 		iter->overlap_ = overlap;
 		iter->score_ = cycle.score;
@@ -1823,7 +1823,7 @@ void RegistrationPruning(vector<Geom>& shard,
 			L[iter->shard_x_ - 1],
 			A_dummy, 
 			length, 
-			50.0); // 50
+			sfsArea(50.0));
 		
 		//#################### Update LCS_out information ####################// 
 		iter->overlap_ = overlap;
@@ -1896,7 +1896,7 @@ bool MergeOverlapTest(vector<Geom>& shard,
 					shard[j].edge_line_,
 					area,
 					size,
-					100);
+					sfsArea(100));
 				if (overlap) {
 					result = true;
 					break;

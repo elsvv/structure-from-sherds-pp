@@ -1782,7 +1782,7 @@ bool CheckGraphPlausibility(vector<Geom>& shard,
 						shard[j].edge_line_,
 						area,
 						size,
-						50);
+						sfsArea(50));
 					toprank_graph.max_overlap_area_ = std::max(area, toprank_graph.max_overlap_area_);
 					if (overlap) {
 						fail_reason = "Overlap_" + to_string(toprank_graph.max_overlap_area_) + "_";
@@ -1824,7 +1824,7 @@ bool CheckGraphPlausibility(vector<Geom>& shard,
 			}
 			double pc_var_value(0);
 			if (!profile.empty()) {
-				profile_matched = ProfileChecking(profile, 7.0, 7.0);	//
+				profile_matched = ProfileChecking(profile, sfsLen(7.0), sfsLen(7.0));	//
 			}
 			if (profile_matched && is_rim) {
 				int up_count(0), down_count(0);
@@ -1880,7 +1880,7 @@ bool SingleOverlapTest(const vector<bool>& true_node,
 				shard[c_node].edge_line_,
 				area,
 				size,
-				100);
+				sfsArea(100));
 
 			if (overlap)
 				break;

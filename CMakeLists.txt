@@ -85,3 +85,19 @@ endif()
 if(NOT MSVC)
   target_compile_options(extract_axis PRIVATE -Wno-deprecated-declarations)
 endif()
+
+# --- SfSpp_ctrl -------------------------------------------------------------
+# Same sources, POT_CTRL selected at compile time: the authors' Pot A driven
+# through our own preprocessing chain, scored against their ground truth. Built
+# as a separate binary so a control run and a working run can proceed together.
+add_executable(SfSpp_ctrl ${PROJ_SRC})
+target_include_directories(SfSpp_ctrl PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/class ${PCL_INCLUDE_DIRS})
+target_link_libraries(SfSpp_ctrl PRIVATE Ceres::ceres ${PCL_LIBRARIES})
+target_compile_definitions(SfSpp_ctrl PRIVATE ${PCL_DEFINITIONS} POT_CTRL)
+if(OpenMP_CXX_FOUND)
+  target_link_libraries(SfSpp_ctrl PRIVATE OpenMP::OpenMP_CXX)
+endif()
+if(NOT MSVC)
+  target_compile_options(SfSpp_ctrl PRIVATE -Wno-deprecated-declarations)
+endif()

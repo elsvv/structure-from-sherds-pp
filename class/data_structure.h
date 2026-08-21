@@ -14,6 +14,37 @@
 #include "KDTree.h"
 #include <unsupported/Eigen/MatrixFunctions>
 #include <cmath>
+#include <cstdlib>
+
+// ---------------------------------------------------------------------------
+// Length scale.
+//
+// Every geometric-verification threshold in this pipeline is an absolute length
+// in millimetres, calibrated for the authors' pots (~200 mm across). None of
+// them transfer to fragments at another scale: on a ~550 mm sherd whose edge
+// line is sampled every few millimetres, the 5 mm correspondence window of the
+// overlap test finds no correspondences inside an interpenetrating pair at all,
+// so the overlap area comes out as zero and a physically impossible
+// configuration passes verification.
+//
+// SFS_LENGTH_SCALE multiplies those thresholds; areas get its square. The
+// default of 1.0 reproduces the published behaviour exactly.
+// ---------------------------------------------------------------------------
+inline double sfsLengthScale() {
+	static const double scale = [] {
+		const char* v = std::getenv("SFS_LENGTH_SCALE");
+		if (!v || !*v) return 1.0;
+		try {
+			const double s = std::stod(v);
+			return (s > 0.0) ? s : 1.0;
+		} catch (...) { return 1.0; }
+	}();
+	return scale;
+}
+inline double sfsLen(double mm)  { return mm * sfsLengthScale(); }
+inline double sfsArea(double mm2){ return mm2 * sfsLengthScale() * sfsLengthScale(); }
+
+
 
 #define NUMBER_OF_THREAD 12
 
