@@ -1176,3 +1176,93 @@ scratchpad (`thickness.py`, `bbox.sh`, `aggregate.py`, `ply_bbox.py`); total run
 about 46 s for all 163 reference surface pairs and 164 meshes. The user-fragment
 thickness (37.58) used the same routine on
 `SfSpp_preprocessing/DatasetB/Surfaces/Pot_A/Pot_A_Piece_0{1,2,3,4}_Surface_{0,1}.xyz`.
+
+---
+
+## Addendum — verification of the review itself (2026-08-21, post-review)
+
+Added while applying the review to the design and the plan. Every recommended
+change in §5 was applied except where noted below. Two of the review's own
+figures did not survive checking against the files.
+
+### A1 — D10's corrected rim vector is wrong on piece 1. The reference is `0, 1, 1, 1, 0, 1, 0, 1`.
+
+D10 states the correct vector is `2, 1, 1, 1, 0, 1, 0, 1` and D7's evidence table
+prints `info 2` for the reference piece 01. Read directly from
+`Dataset/SfS_pp/Breaklines/Pot_A_Piece_<NN>_Breakline_0.pcd`, second header line,
+fourth field (the line is `# <segments> <points> <info>`, so `info` is field 4 of
+the whitespace split including the `#`):
+
+```
+p01: # 5 208 0      p05: # 4 147 0
+p02: # 3 169 1      p06: # 2 150 1
+p03: # 4 156 1      p07: # 3  65 0
+p04: # 4 151 1      p08: # 3  60 1
+```
+
+So the SfS++ reference vector is `0, 1, 1, 1, 0, 1, 0, 1` — five rims, **no base
+flag anywhere on Pot A**.
+
+The `2` is real but belongs to the *older ICCV collection*
+(`structure-from-sherds/ICCV Data/Breaklines/`), which reads
+`2, 1, 1, 1, 1, 1, 0, 0` and also has different segment counts
+(4,3,4,4,3,2,3,3 against SfS++'s 5,3,4,4,4,2,3,3). Both collections mark exactly
+five rims; they disagree on which (ICCV 2,3,4,5,6; SfS++ 2,3,4,6,8). The rest of
+D10 stands — the plan's original `2, 1, 1, 1, 1, 1, 0, 0` would indeed have
+rejected a correct port against SfS++ — and D7's "the reference marks five
+(pieces 2, 3, 4, 6, 8)" is correct.
+
+That SfS++ carries no base flag on Pot A is independent confirmation of G3: the
+paper is base-agnostic, `NO_BASE_INFO` is active, and the base half of the port
+is inert.
+
+### A2 — Wall thickness of our own fragments confirmed at ~37.8, independently.
+
+Re-measured with brute force (400 samples against 40 000 subsampled points per
+fragment) rather than the review's voxel-grid routine, on
+`SfSpp_preprocessing/DatasetB/Surfaces/Pot_A/`:
+
+```
+piece 1: 37.56    piece 3: 37.95
+piece 2: 37.21    piece 4: 38.96      median 37.76
+```
+
+D6's 37.58 and its 10.2× ratio hold. The design's earlier 8.25 / 2.2× is dead.
+
+### A3 — Everything else spot-checked held.
+
+Independently re-verified while writing the revision: the ten-pot graph table in
+D2 (all-zero rows D 22, F 7, I 28–30, J 9; 8/9/4/28/31/6/7/11/27/11 evaluated);
+the mesh-suffix split (147 of 164 are `_Mesh_DS.obj`); `sfsLen`/`sfsArea`
+covering 12 literals across 11 lines; `POT_CTRL`'s `GroundTruth/Transformation/`
+paths resolving to nothing; the flat-vs-nested layout split between
+`POT_A`…`POT_J` and `POT_CTRL`/`POT_TEST`; Python 3.14.7 with no `pytest`;
+`CountResult` ignoring its `graph` argument; and `graph_dummy` at `main.cpp:418`
+being read at `:433` while never assigned.
+
+Two additions the review did not mention, both used in the revised plan:
+
+- **`data_path.h` is included by `main.cpp` alone**, and `SHARD_NUMBER` appears
+  in no other file. So generating the preset (G1) recompiles exactly one
+  translation unit — timed at **4.8 s** here — which makes "generate, rebuild,
+  run" viable as an ordinary harness step rather than a per-collection port.
+- **`mesh_processing.cpp:1722` composes the mesh filename as `<stem>_Mesh.obj`
+  unconditionally**, so staging must normalise `_Mesh_DS.obj` → `_Mesh.obj`. This
+  makes D3(a)'s fix concrete: resolve the suffix on read, always write `_Mesh.obj`.
+- **The `[breakline]` log line carries the full file path** and the segment,
+  point, rim, base and info values, so D9's "key the counts by fragment" is
+  solvable exactly for breaklines. Cluster counts have no name in the log, but
+  `mesh_processing.cpp:1712` sorts its input files, so zipping with the sorted
+  name list is sound — the revised harness asserts the lengths match rather than
+  guessing.
+
+### A4 — Recommendations not applied as written
+
+- **§5 item 24 (the renderer):** dropped rather than built. The design's
+  "required outputs per run" no longer lists a rendering, and Task 12 judges join
+  geometry numerically instead.
+- **§5 items 13 and 21:** merged. The generated `data_path.h` became Task 1 in
+  its own right rather than a sub-item, because it is the design's stated goal
+  and the sweep depends on it entirely.
+- **§5 item 11 (test runner):** resolved as a venv at `tools/.venv` created with
+  `--system-site-packages`, so numpy 2.4.1 is inherited rather than rebuilt.
