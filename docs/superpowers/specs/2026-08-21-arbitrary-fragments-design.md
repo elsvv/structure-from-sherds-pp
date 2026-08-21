@@ -13,13 +13,23 @@ it must work for four fragments and for a hundred, with no rework in between.
 
 Measured, not eyeballed. One command reproduces this table:
 
-| Pot | Sherds | Target | Source of target | Now |
-|---|---|---|---|---|
-| A | 8 | 8/8 | our own reference run | **0/8** |
-| B | 9 | 9/9 | paper, Table 2 | not run |
-| C | 4 | 4/4 | paper, Table 2 | not run |
-| D | 28 | ≥22/28 | paper, Table 2 (b=3, k=5) | not run |
-| E | 31 | ≥19/31 | paper, Table 2 (b=3, k=5) | not run |
+Measured against the **SfS++ dataset** (`Dataset/SfS_pp`, ten pots A–J), which is
+a strict superset of the ICCV 2021 collection — Pot A is byte-identical in both.
+Targets are the accuracies published on the SfS++ project page.
+
+| Pot | Sherds | Target | Now |
+|---|---|---|---|
+| A | 8 | 8/8 | **0/8** |
+| B | 9 | 9/9 | not run |
+| C | 4 | 4/4 | not run |
+| E | 31 | 31/31 | not run |
+| H | 11 | 10/11 | not run |
+| D | 29 | 24/29 | not run |
+| F, G, I, J | 7, 7, 30, 19 | reported, not gated | not run |
+
+F, G, I and J are not gated because the project page and `class/data_path.h`
+disagree on their sherd counts (7 vs 6, 7 vs 9, 30 vs 27, 19 vs 11), so there is
+no unambiguous target to hold them to.
 
 Two conditions on top of the numbers:
 

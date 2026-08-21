@@ -13,11 +13,24 @@
 - Three repositories, all on branch `macos-port`:
   - `/Users/vaceslaveliseev/@dev/structure-from-sherds-pp` — reassembly (`build/SfSpp`, `build/SfSpp_ctrl`, `build/extract_axis`). Remote: `origin` = user's fork. **Harness lives here.**
   - `/Users/vaceslaveliseev/@dev/SfSpp_preprocessing` — preprocessing (`build/MeshPreprocessing`, `build/EdgeLineExtraction`). **No remote yet** — commit locally only.
-  - `/Users/vaceslaveliseev/@dev/structure-from-sherds` — ICCV 2021 repo, holds `ICCV Data/` (reference dataset + ground truth). **Read-only in this plan.**
+  - `/Users/vaceslaveliseev/@dev/structure-from-sherds` — ICCV 2021 repo, holds the older `ICCV Data/`. **Read-only, and superseded as the reference by `Dataset/SfS_pp` below.**
 - Python is `/opt/homebrew/bin/python3`. Only `numpy` may be imported. `scipy`, `trimesh`, `open3d` are NOT installed and must NOT be added.
 - Rebuild after any C++ change: `cmake --build build -j10` in that repository.
-- Reference dataset root: `/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data`
-- Ground truth: `ICCV Data/GroundTruth/Transformation/Pot_<X>_Piece_<n>_T.txt` — note the piece number here is **not** zero-padded, while mesh filenames are (`Pot_A_Piece_01_Mesh.obj`).
+- **Reference dataset: the SfS++ collection**, `structure-from-sherds-pp/Dataset/SfS_pp`
+  (already downloaded, 713 MB, gitignored). Ten pots A–J with `Mesh/`, `Axes/`,
+  `Breaklines/`, `Surfaces/`, `Ground Truth/` and `Transformation/`.
+  - It is a strict superset of the ICCV 2021 data: `Pot_A_Piece_01_Mesh.obj` is
+    byte-identical in both (100 064 vertices, bbox 106.73 × 119.16 × 64.92 mm),
+    plus five pots F–J that did not exist in 2021.
+  - The ICCV 2021 folder `structure-from-sherds/ICCV Data` is now used only where
+    a step explicitly says so.
+- Ground truth: `Dataset/SfS_pp/Ground Truth/Pot_<X>_Piece_<n>_T.txt` — **note the
+  space** in `Ground Truth`, and that the piece number is **not** zero-padded here
+  while mesh filenames are (`Pot_A_Piece_01_Mesh.obj`).
+- Raw pipeline inputs for the reference pots are published separately and are
+  fetched by `SfSpp_preprocessing/download.sh`: `Mesh.zip` (177 MB) and
+  `Point.zip` (2.5 GB). Using the authors' own `Point/*.pcd` for reference runs
+  removes our staging code as a variable in the diagnosis — see Task 3.
 - Success threshold per fragment, from the paper: mean placement error < 20 mm after one global rigid alignment of the whole assembly.
 - Environment variables already implemented and available:
   - Preprocessing: `SFSPP_DATASET_ROOT`, `SFSPP_TEMP_ROOT`, `SFSPP_SAMPLING_RADIUS`, `SFSPP_NORMAL_NEIGHBORS`, `SFSPP_RG_NEIGHBORS`, `SFSPP_SMOOTHNESS_DEG`, `SFSPP_MIN_CLUSTER`, `SFSPP_CURVATURE`, `SFSPP_BASE_RADIUS`, `SFSPP_BASE_NORMAL_DEG`, `SFSPP_BASE_ANGLE_DIFF_DEG`, `SFSPP_BASE_ZBIN`, `SFSPP_BASE_MIN_COUNT`, `SFSPP_BASE_MIN_POINTS`, `SFSPP_BASE_STD_RATIO`
@@ -424,9 +437,9 @@ the authors' preprocessed Pot A gives 8/8 with a mean error of about 4.4 mm.
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/tools
 /opt/homebrew/bin/python3 -c "
 from sfsbench.score import score_result
-I='/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data'
+R='/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp'
 r=score_result('/Users/vaceslaveliseev/@dev/SfSpp_preprocessing/DatasetRef/Result',
-               I+'/Mesh', I+'/GroundTruth/Transformation', 'A')
+               R+'/Mesh', R+'/Ground Truth', 'A')
 print(r['correct'], '/', r['total_scored'], 'mean', round(r['mean_error'],2))
 "
 ```
@@ -521,7 +534,9 @@ from dataclasses import dataclass
 
 PP_REPO = "/Users/vaceslaveliseev/@dev/structure-from-sherds-pp"
 PREP_REPO = "/Users/vaceslaveliseev/@dev/SfSpp_preprocessing"
-ICCV = "/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+REFERENCE = os.path.join(PP_REPO, "Dataset", "SfS_pp")
+REFERENCE_GT = os.path.join(REFERENCE, "Ground Truth")   # note the space
+ICCV = "/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"   # 2021 data
 
 
 @dataclass
@@ -615,11 +630,16 @@ def run_pipeline(paths, env=None, binary="SfSpp"):
 """sfsbench — one command from raw meshes to a scored reassembly."""
 import argparse, os, sys
 
-from sfsbench.run import PipelinePaths, run_pipeline, outcome, PP_REPO, PREP_REPO, ICCV
+from sfsbench.run import PipelinePaths, run_pipeline, outcome, PP_REPO, PREP_REPO
 from sfsbench.score import score_result
 from sfsbench.stage import stage_dataset
 
-REFERENCE_TARGETS = {"A": 8, "B": 9, "C": 4, "D": 22, "E": 19}
+# Targets from the SfS++ project page (sj-yoo.info/sfs). Only the pots where the
+# page's sherd count agrees with SHARD_NUMBER in class/data_path.h are hard
+# targets; for F, G, I and J the two sources disagree (7/6, 7/9, 30/27, 19/11),
+# so those are reported but not gated on.
+REFERENCE_TARGETS = {"A": 8, "B": 9, "C": 4, "D": 24, "E": 31, "H": 10}
+REFERENCE_SOFT = {"F": None, "G": None, "I": None, "J": None}
 
 
 def main(argv=None):
@@ -690,10 +710,10 @@ Expected: PASS, 6 passed
 
 ```bash
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/tools
-I="/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+R="/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp"
 PYTHONPATH=. /opt/homebrew/bin/python3 -m sfsbench.cli \
-  --src "$I/Mesh" --pot-id A --work /tmp/sfsbench-A \
-  --gt "$I/GroundTruth/Transformation" --source-mesh-dir "$I/Mesh" \
+  --src "$R/Mesh" --pot-id A --work /tmp/sfsbench-A \
+  --gt "$R/Ground Truth" --source-mesh-dir "$R/Mesh" \
   --binary SfSpp_ctrl
 ```
 
@@ -701,7 +721,7 @@ Expected: `pot A: misassembled`, `correct : 0 / 8`, matching the diagnosis resul
 The harness is correct when it reproduces the *known wrong* answer — that proves
 it is driving the same pipeline, not a different one.
 
-Note `--src "$I/Mesh"` picks up all 90 meshes in that folder, not only Pot A.
+Note `--src "$R/Mesh"` picks up all 90 meshes in that folder, not only Pot A.
 If the staging step produces more than 8 fragments, copy the eight
 `Pot_A_Piece_0*_Mesh.obj` files into a scratch folder first and point `--src` there.
 
@@ -738,8 +758,9 @@ import os
 def substitute(dataset_root, pot_id, component, reference_root):
     """Symlink the authors' files over ours for exactly one component.
 
-    reference_root is the flat ICCV Data folder: Axes/, Breaklines/, Surfaces/
-    hold Pot_A_Piece_01_* directly, with no per-pot subdirectory.
+    reference_root is Dataset/SfS_pp, whose Axes/, Breaklines/ and Surfaces/
+    are flat: they hold Pot_A_Piece_01_* directly, with no per-pot subdirectory,
+    unlike the staged layout we produce.
     """
     plan = {
         "axes":       ("Axes",                       "{n}_Axis.xyz"),
@@ -774,7 +795,7 @@ def substitute(dataset_root, pot_id, component, reference_root):
 
 ```bash
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/tools
-I="/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+R="/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp"
 cp -R /tmp/sfsbench-A /tmp/ablate-axes
 PYTHONPATH=. /opt/homebrew/bin/python3 -c "
 from sfsbench.ablate import substitute
@@ -791,9 +812,9 @@ SFS_DATA_ROOT=/tmp/ablate-axes/Dataset/ SFS_AUTOSAVE=exit ./SfSpp_ctrl 2>&1 | gr
 cd ../tools
 PYTHONPATH=. /opt/homebrew/bin/python3 -c "
 from sfsbench.score import score_result
-I='$I'
-r=score_result('/tmp/ablate-axes/Dataset/Result', I+'/Mesh',
-               I+'/GroundTruth/Transformation', 'A')
+R='$R'
+r=score_result('/tmp/ablate-axes/Dataset/Result', R+'/Mesh',
+               R+'/Ground Truth', 'A')
 print('axes substituted ->', r['correct'], '/', r['total_scored'])
 "
 ```
@@ -953,9 +974,9 @@ the `info` field of each produced header against the authors' files.
 ```bash
 cd /Users/vaceslaveliseev/@dev/SfSpp_preprocessing/build
 SFSPP_DATASET_ROOT=/tmp/sfsbench-A/Dataset SFSPP_TEMP_ROOT=/tmp/sfsbench-A/Temp ./EdgeLineExtraction 2>&1 | grep '\[breakline\]'
-I="/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+R="/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp"
 for i in 01 02 03 04 05 06 07 08; do
-  echo "Piece_$i ours: $(sed -n 2p /tmp/sfsbench-A/Dataset/Breaklines/Pot_A/Pot_A_Piece_${i}_Breakline_0.pcd)  theirs: $(sed -n 2p "$I/Breaklines/Pot_A_Piece_${i}_Breakline_0.pcd")"
+  echo "Piece_$i ours: $(sed -n 2p /tmp/sfsbench-A/Dataset/Breaklines/Pot_A/Pot_A_Piece_${i}_Breakline_0.pcd)  theirs: $(sed -n 2p "$R/Breaklines/Pot_A_Piece_${i}_Breakline_0.pcd")"
 done
 ```
 
@@ -966,10 +987,10 @@ fragments. The reference is `2, 1, 1, 1, 1, 1, 0, 0` for pieces 1–8.
 
 ```bash
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/tools
-I="/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+R="/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp"
 PYTHONPATH=. /opt/homebrew/bin/python3 -m sfsbench.cli \
   --src /tmp/potA-src --pot-id A --work /tmp/sfsbench-A2 \
-  --gt "$I/GroundTruth/Transformation" --source-mesh-dir "$I/Mesh" \
+  --gt "$R/Ground Truth" --source-mesh-dir "$R/Mesh" \
   --binary SfSpp_ctrl
 ```
 
@@ -1226,9 +1247,9 @@ surface files holding 800 lines each (the slab's two large faces, 20×20×2 tria
 
 ```bash
 cd /Users/vaceslaveliseev/@dev/SfSpp_preprocessing
-I="/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+R="/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp"
 for i in 01 02 03 04 05 06 07 08; do
-  ./build/MeshSegmentation "$I/Mesh/Pot_A_Piece_${i}_Mesh.obj" /tmp/segA_${i}
+  ./build/MeshSegmentation "$R/Mesh/Pot_A_Piece_${i}_Mesh.obj" /tmp/segA_${i}
 done
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/build
 for i in 01 02 03 04 05 06 07 08; do
@@ -1236,7 +1257,7 @@ for i in 01 02 03 04 05 06 07 08; do
 done
 ```
 
-Then compare each `/tmp/segA_NN_Axis.xyz` against `$I/Axes/Pot_A_Piece_NN_Axis.xyz`
+Then compare each `/tmp/segA_NN_Axis.xyz` against `$R/Axes/Pot_A_Piece_NN_Axis.xyz`
 using the angle measurement from Task 2's scorer.
 
 Expected: median angle below 1°, against 3.5° from the point-cloud segmentation.
@@ -1447,12 +1468,12 @@ Expected: PASS, 3 passed
 
 ```bash
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/tools
-I="/Users/vaceslaveliseev/@dev/structure-from-sherds/ICCV Data"
+R="/Users/vaceslaveliseev/@dev/structure-from-sherds-pp/Dataset/SfS_pp"
 PYTHONPATH=. /opt/homebrew/bin/python3 -c "
 from sfsbench.scale import infer_scales
-I='$I'
-pairs=[(f'{I}/Surfaces/Pot_A_Piece_{i:02d}_Surface_0.xyz',
-        f'{I}/Surfaces/Pot_A_Piece_{i:02d}_Surface_1.xyz') for i in range(1,9)]
+R='$R'
+pairs=[(f'{R}/Surfaces/Pot_A_Piece_{i:02d}_Surface_0.xyz',
+        f'{R}/Surfaces/Pot_A_Piece_{i:02d}_Surface_1.xyz') for i in range(1,9)]
 print(infer_scales(pairs, [119.0]))
 "
 ```
@@ -1470,7 +1491,7 @@ git commit -m "harness: infer millimetre thresholds from wall thickness and exte
 
 ---
 
-### Task 8: The reference sweep
+### Task 8: The reference sweep (ten pots)
 
 **Files:**
 - Create: `tools/sfsbench/sweep.py`
@@ -1492,7 +1513,9 @@ exclusive:
 
 ```cpp
 #if !defined(POT_CTRL) && !defined(POT_A) && !defined(POT_B) && \
-    !defined(POT_C) && !defined(POT_D) && !defined(POT_E)
+    !defined(POT_C) && !defined(POT_D) && !defined(POT_E) && \
+    !defined(POT_F) && !defined(POT_G) && !defined(POT_H) && \
+    !defined(POT_I) && !defined(POT_J)
 #define POT_TEST			// our own scans, see BUILD-macOS.md
 #endif
 ```
@@ -1500,7 +1523,7 @@ exclusive:
 In `CMakeLists.txt`, after the `SfSpp_ctrl` block:
 
 ```cmake
-foreach(pot A B C D E)
+foreach(pot A B C D E F G H I J)
   add_executable(SfSpp_${pot} ${PROJ_SRC})
   target_include_directories(SfSpp_${pot} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/class ${PCL_INCLUDE_DIRS})
@@ -1515,15 +1538,15 @@ foreach(pot A B C D E)
 endforeach()
 ```
 
-- [ ] **Step 2: Build and verify all five exist**
+- [ ] **Step 2: Build and verify all ten exist**
 
 ```bash
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release > /dev/null && cmake --build build -j10 2>&1 | grep -E "error:|Built target"
-ls -1 build/SfSpp_[A-E]
+ls -1 build/SfSpp_[A-J]
 ```
 
-Expected: five binaries, no errors.
+Expected: ten binaries, no errors.
 
 - [ ] **Step 3: Write the sweep**
 
@@ -1533,19 +1556,22 @@ Expected: five binaries, no errors.
 import os
 
 from sfsbench.cli import REFERENCE_TARGETS
-from sfsbench.run import ICCV, PP_REPO, PREP_REPO, PipelinePaths, run_pipeline, outcome
+from sfsbench.run import (REFERENCE, REFERENCE_GT, PP_REPO, PREP_REPO,
+                          PipelinePaths, run_pipeline, outcome)
 from sfsbench.score import score_result
 from sfsbench.stage import stage_dataset
 
-SHERD_COUNT = {"A": 8, "B": 9, "C": 4, "D": 28, "E": 31}
+# SHARD_NUMBER as compiled into class/data_path.h — this is what actually runs.
+SHERD_COUNT = {"A": 8, "B": 9, "C": 4, "D": 29, "E": 31,
+               "F": 7, "G": 7, "H": 11, "I": 30, "J": 19}
 
 
 def _pot_source(pot, scratch):
-    """The reference Mesh folder is flat and holds every pot; isolate one."""
+    """The reference Mesh folder is flat and holds all ten pots; isolate one."""
     import glob, shutil
     out = os.path.join(scratch, f"src_{pot}")
     os.makedirs(out, exist_ok=True)
-    for src in sorted(glob.glob(os.path.join(ICCV, "Mesh", f"Pot_{pot}_Piece_*_Mesh.obj"))):
+    for src in sorted(glob.glob(os.path.join(REFERENCE, "Mesh", f"Pot_{pot}_Piece_*_Mesh.obj"))):
         shutil.copy(src, out)
     return out
 
@@ -1560,8 +1586,8 @@ def sweep(pots, work_root):
         stage_dataset(_pot_source(pot, work_root), dataset_root, pot)
         paths = PipelinePaths(PP_REPO, PREP_REPO, dataset_root, temp_root, pot)
         stats = run_pipeline(paths, {}, binary=f"SfSpp_{pot}")
-        scored = score_result(stats["result_dir"], os.path.join(ICCV, "Mesh"),
-                              os.path.join(ICCV, "GroundTruth", "Transformation"), pot)
+        scored = score_result(stats["result_dir"], os.path.join(REFERENCE, "Mesh"),
+                              REFERENCE_GT, pot)
         results[pot] = {"stats": stats, "scored": scored,
                         "outcome": outcome(stats, scored),
                         "target": REFERENCE_TARGETS.get(pot),
@@ -1583,16 +1609,18 @@ def format_table(results):
 cd /Users/vaceslaveliseev/@dev/structure-from-sherds-pp/tools
 PYTHONPATH=. /opt/homebrew/bin/python3 -c "
 from sfsbench.sweep import sweep, format_table
-r = sweep(['A','B','C','D','E'], '/tmp/sfs-sweep')
+r = sweep(['A','B','C','H','F','G','J','D','E','I'], '/tmp/sfs-sweep')
 print(format_table(r))
 "
 ```
 
-Expected: pots A, B and C at their full targets. D and E at or above the paper's
-`b=3, k=5` numbers. This is the definition of done from the spec.
+Expected: A, B, C and E at full, D at 24/29 and H at 10/11 — the SfS++ published
+numbers. F, G, I and J are reported but not gated, because the project page and
+`class/data_path.h` disagree on their sherd counts.
 
-Pots D and E take tens of minutes each; run them last and expect the sweep to
-occupy the better part of an hour.
+The order above is deliberate: the small pots finish in minutes and fail fast,
+while D, E and I hold 29–31 fragments each and take tens of minutes. Expect the
+full sweep to run for a couple of hours.
 
 - [ ] **Step 5: Append the table to the notes and commit**
 
